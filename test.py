@@ -1,3 +1,7 @@
+import unittest
+
+       
+     
 import torch
 import numpy as np
 import math
@@ -86,78 +90,249 @@ def RGB2SH(rgb):
     C0 = 0.28209479177387814
     return (rgb - 0.5) / C0
 
+
+
 #------- test the diff gauss rasterizer ------
-def render():
+class TestGaussianRasterizationSettings(unittest.TestCase):
+    def test_create_raster_settings(self):
+        # ---- setup diff gauss rasterizer ----
+        bg_color=torch.tensor([0,0,0],dtype=torch.float).cuda() 
 
-    # ---- setup diff gauss rasterizer ----
-    bg_color=torch.tensor([0,0,0],dtype=torch.float).cuda() 
-
-    FoVx = np.pi/4
-    FoVy = np.pi/4
-    tanfovx = math.tan(FoVx*0.5)
-    tanfovy = math.tan(FoVy*0.5)
-    image_height = 128
-    image_width = 128
-    znear=0.01
-    zfar=100
-    
-    R = np.eye(3)
-    T = np.zeros((3,1)) 
+        FoVx = np.pi/4
+        FoVy = np.pi/4
+        tanfovx = math.tan(FoVx*0.5)
+        tanfovy = math.tan(FoVy*0.5)
+        image_height = 128
+        image_width = 128
+        znear=0.01
+        zfar=100
         
-    world_view_transform = torch.tensor(getWorld2View(R, T)).transpose(0, 1).cuda()
-    projection_matrix = getProjectionMatrix(znear=znear, zfar=zfar, fovX=FoVx, fovY=FoVy).transpose(0,1).cuda()
-    camera_center = world_view_transform.inverse()[3, :3]
+        R = np.eye(3)
+        T = np.zeros(3) 
+            
+        world_view_transform = torch.tensor(getWorld2View(R, T)).transpose(0, 1).cuda()
+        projection_matrix = getProjectionMatrix(znear=znear, zfar=zfar, fovX=FoVx, fovY=FoVy).transpose(0,1).cuda()
+        camera_center = world_view_transform.inverse()[3, :3]
 
-    raster_settings = GaussianRasterizationSettings(
-        image_height=image_height,
-        image_width=image_width,
-        tanfovx=tanfovx,
-        tanfovy=tanfovy,
-        bg=bg_color,
-        scale_modifier=1.0,
-        viewmatrix=world_view_transform,
-        projmatrix=projection_matrix,
-        sh_degree=0,
-        campos=camera_center,
-        prefiltered=False,
-        debug=False
-    )
+        raster_settings = GaussianRasterizationSettings(
+            image_height=image_height,
+            image_width=image_width,
+            tanfovx=tanfovx,
+            tanfovy=tanfovy,
+            bg=bg_color,
+            scale_modifier=1.0,
+            viewmatrix=world_view_transform,
+            projmatrix=projection_matrix,
+            sh_degree=0,
+            campos=camera_center,
+            prefiltered=False,
+            debug=False
+        )
 
-    rasterizer = GaussianRasterizer(raster_settings=raster_settings)
 
-    N=10
-    pcd_points = np.random.randn((N,3))
-    pcd_colors = np.random.rand((N,3))
-    fused_point_cloud = torch.tensor(np.asarray(pcd_points)).float().cuda()
-    fused_color = RGB2SH(torch.tensor(np.asarray(pcd_colors)).float().cuda())
-    opacities = inverse_sigmoid(0.1 * torch.ones((fused_point_cloud.shape[0], 1), dtype=torch.float, device="cuda"))
-    screenspace_points = torch.zeros_like(fused_point_cloud, dtype=torch.float, device="cuda")
+ 
+class TestGaussianRasterizer(unittest.TestCase):
+    def test_create_rasterizer(self):
+        # ---- setup diff gauss rasterizer ----
+        bg_color=torch.tensor([0,0,0],dtype=torch.float).cuda() 
+
+        FoVx = np.pi/4
+        FoVy = np.pi/4
+        tanfovx = math.tan(FoVx*0.5)
+        tanfovy = math.tan(FoVy*0.5)
+        image_height = 128
+        image_width = 128
+        znear=0.01
+        zfar=100
+        
+        R = np.eye(3)
+        T = np.zeros(3) 
+            
+        world_view_transform = torch.tensor(getWorld2View(R, T)).transpose(0, 1).cuda()
+        projection_matrix = getProjectionMatrix(znear=znear, zfar=zfar, fovX=FoVx, fovY=FoVy).transpose(0,1).cuda()
+        camera_center = world_view_transform.inverse()[3, :3]
+
+        raster_settings = GaussianRasterizationSettings(
+            image_height=image_height,
+            image_width=image_width,
+            tanfovx=tanfovx,
+            tanfovy=tanfovy,
+            bg=bg_color,
+            scale_modifier=1.0,
+            viewmatrix=world_view_transform,
+            projmatrix=projection_matrix,
+            sh_degree=0,
+            campos=camera_center,
+            prefiltered=False,
+            debug=False
+        )
+
+        rasterizer = GaussianRasterizer(raster_settings=raster_settings)
+
+        N=10
+        pcd_points = np.random.randn(N,3)
+        fused_point_cloud = torch.tensor(np.asarray(pcd_points)).float().cuda()
+        visible = rasterizer.markVisible(fused_point_cloud)
+        print(visible)
+        
+
+    def test_create_rasterizer_with_pcd(self):
+        # ---- setup diff gauss rasterizer ----
+        bg_color=torch.tensor([0,0,0],dtype=torch.float).cuda() 
+
+        FoVx = np.pi/4
+        FoVy = np.pi/4
+        tanfovx = math.tan(FoVx*0.5)
+        tanfovy = math.tan(FoVy*0.5)
+        image_height = 128
+        image_width = 128
+        znear=0.01
+        zfar=100
+        
+        R = np.eye(3)
+        T = np.zeros(3) 
+            
+        world_view_transform = torch.tensor(getWorld2View(R, T)).transpose(0, 1).cuda()
+        projection_matrix = getProjectionMatrix(znear=znear, zfar=zfar, fovX=FoVx, fovY=FoVy).transpose(0,1).cuda()
+        camera_center = world_view_transform.inverse()[3, :3]
+
+        raster_settings = GaussianRasterizationSettings(
+            image_height=image_height,
+            image_width=image_width,
+            tanfovx=tanfovx,
+            tanfovy=tanfovy,
+            bg=bg_color,
+            scale_modifier=1.0,
+            viewmatrix=world_view_transform,
+            projmatrix=projection_matrix,
+            sh_degree=0,
+            campos=camera_center,
+            prefiltered=False,
+            debug=False
+        )
+
+        rasterizer = GaussianRasterizer(raster_settings=raster_settings)
+
+        N=10
+        pcd_points = np.random.randn(N,3)
+        pcd_colors = np.random.rand(N,3)
+        fused_point_cloud = torch.tensor(np.asarray(pcd_points)).float().cuda()
+        fused_color = RGB2SH(torch.tensor(np.asarray(pcd_colors)).float().cuda())
+        opacities = inverse_sigmoid(0.1 * torch.ones((fused_point_cloud.shape[0], 1), dtype=torch.float, device="cuda"))
+        screenspace_points = torch.zeros_like(fused_point_cloud, dtype=torch.float, device="cuda")
     
-    means3D = fused_point_cloud
-    means2D = screenspace_points
-    opacity = opacities
+        means3D = fused_point_cloud
+        means2D = screenspace_points
+        opacity = opacities
 
-    rots = torch.zeros((fused_point_cloud.shape[0],4),device="cuda")
-    rots[:,0] = 1
-    scales = np.ones_like(fused_point_cloud, dtype=torch.float, device="cuda")
-    rotations = rots
-    cov3D_precomp = None
+        rots = torch.zeros((fused_point_cloud.shape[0],4),device="cuda")
+        rots[:,0] = 1
+        scales = torch.ones_like(fused_point_cloud, dtype=torch.float, device="cuda")
+        rotations = rots
+        cov3D_precomp = None
 
-    shs = None
-    colors_precomp = fused_color
+        shs = None
+        colors_precomp = fused_color
 
-    rendered_image, radii = rasterizer(
-        means3D = means3D,
-        means2D = means2D,
-        shs = shs,
-        colors_precomp = colors_precomp,
-        opacities = opacity,
-        scales = scales,
-        rotations = rotations,
-        cov3D_precomp = cov3D_precomp
-    )
+        rendered_image, radii, depth, acc = rasterizer(
+            means3D = means3D,
+            shs = shs,
+            colors_precomp = colors_precomp,
+            opacities = opacity,
+            scales = scales,
+            rotations = rotations,
+            cov3D_precomp = cov3D_precomp
+        )
+        print(rendered_image.shape)
+        print(radii.shape)
+        print(depth.shape)
+        print(acc.shape)
+
+
+    def test_create_rasterizer_with_pcd_backward(self):
+        # ---- setup diff gauss rasterizer ----
+        bg_color=torch.tensor([0,0,0],dtype=torch.float).cuda() 
+
+        FoVx = np.pi/4
+        FoVy = np.pi/4
+        tanfovx = math.tan(FoVx*0.5)
+        tanfovy = math.tan(FoVy*0.5)
+        image_height = 128
+        image_width = 128
+        znear=0.01
+        zfar=100
+        
+        R = np.eye(3)
+        T = np.zeros(3) 
+            
+        world_view_transform = torch.tensor(getWorld2View(R, T)).transpose(0, 1).cuda()
+        projection_matrix = getProjectionMatrix(znear=znear, zfar=zfar, fovX=FoVx, fovY=FoVy).transpose(0,1).cuda()
+        camera_center = world_view_transform.inverse()[3, :3]
+
+        raster_settings = GaussianRasterizationSettings(
+            image_height=image_height,
+            image_width=image_width,
+            tanfovx=tanfovx,
+            tanfovy=tanfovy,
+            bg=bg_color,
+            scale_modifier=1.0,
+            viewmatrix=world_view_transform,
+            projmatrix=projection_matrix,
+            sh_degree=0,
+            campos=camera_center,
+            prefiltered=False,
+            debug=False
+        )
+
+        rasterizer = GaussianRasterizer(raster_settings=raster_settings)
+
+        N=10
+        pcd_points = np.random.randn(N,3)
+        pcd_colors = np.random.rand(N,3)
+        fused_point_cloud = torch.tensor(np.asarray(pcd_points)).float().cuda()
+        fused_color = RGB2SH(torch.tensor(np.asarray(pcd_colors)).float().cuda())
+        opacities = inverse_sigmoid(0.1 * torch.ones((fused_point_cloud.shape[0], 1), dtype=torch.float, device="cuda"))
+        screenspace_points = torch.zeros_like(fused_point_cloud, dtype=torch.float, requires_grad=True, device="cuda")+0
+        try:
+            screenspace_points.retain_grad()
+        except:
+            pass
+    
+        means3D = fused_point_cloud
+        means2D = screenspace_points
+        opacity = opacities
+
+        rots = torch.zeros((fused_point_cloud.shape[0],4),device="cuda")
+        rots[:,0] = 1
+        scales = torch.ones_like(fused_point_cloud, dtype=torch.float, device="cuda")
+        rotations = rots
+        cov3D_precomp = None
+
+        shs = None
+        colors_precomp = fused_color
+
+        rendered_image, radii, depth, acc = rasterizer(
+            means3D = means3D,
+            shs = shs,
+            colors_precomp = colors_precomp,
+            opacities = opacity,
+            scales = scales,
+            rotations = rotations,
+            cov3D_precomp = cov3D_precomp
+        )
+        print(rendered_image.shape)
+        print(radii.shape)
+        print(depth.shape)
+        print(acc.shape)
+        print(means3D)
+        print(means2D)
+        print(scales)
+        print(rotations)
+        print(radii)
+        print(opacity)
+
 
 # test run of diff gaussian rasterizer (output depth as well?)
 if __name__ == '__main__':
-    render()
+    unittest.main()
     
