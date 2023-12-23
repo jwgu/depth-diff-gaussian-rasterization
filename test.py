@@ -173,7 +173,7 @@ class TestGaussianRasterizer(unittest.TestCase):
         pcd_points = np.random.randn(N,3)
         fused_point_cloud = torch.tensor(np.asarray(pcd_points)).float().cuda()
         visible = rasterizer.markVisible(fused_point_cloud)
-        print(visible)
+        #print(visible)
         
 
     def test_create_rasterizer_with_pcd(self):
@@ -219,6 +219,7 @@ class TestGaussianRasterizer(unittest.TestCase):
         fused_point_cloud = torch.tensor(np.asarray(pcd_points)).float().cuda()
         fused_color = RGB2SH(torch.tensor(np.asarray(pcd_colors)).float().cuda())
         opacities = inverse_sigmoid(0.1 * torch.ones((fused_point_cloud.shape[0], 1), dtype=torch.float, device="cuda"))
+        # --- only the grad of means2D will be computed and output. The means2D is stored in geomState and will not output.
         screenspace_points = torch.zeros_like(fused_point_cloud, dtype=torch.float, device="cuda")
     
         means3D = fused_point_cloud
@@ -236,6 +237,7 @@ class TestGaussianRasterizer(unittest.TestCase):
 
         rendered_image, radii, depth, acc = rasterizer(
             means3D = means3D,
+            means2D = means2D,
             shs = shs,
             colors_precomp = colors_precomp,
             opacities = opacity,
@@ -243,10 +245,10 @@ class TestGaussianRasterizer(unittest.TestCase):
             rotations = rotations,
             cov3D_precomp = cov3D_precomp
         )
-        print(rendered_image.shape)
-        print(radii.shape)
-        print(depth.shape)
-        print(acc.shape)
+        #print(rendered_image.shape)
+        #print(radii.shape)
+        #print(depth.shape)
+        #print(acc.shape)
 
 
     def test_create_rasterizer_with_pcd_backward(self):
@@ -304,7 +306,7 @@ class TestGaussianRasterizer(unittest.TestCase):
 
         rots = torch.zeros((fused_point_cloud.shape[0],4),device="cuda")
         rots[:,0] = 1
-        scales = torch.ones_like(fused_point_cloud, dtype=torch.float, device="cuda")
+        scales = torch.ones_like(fused_point_cloud, dtype=torch.float, device="cuda")*3
         rotations = rots
         cov3D_precomp = None
 
@@ -313,6 +315,7 @@ class TestGaussianRasterizer(unittest.TestCase):
 
         rendered_image, radii, depth, acc = rasterizer(
             means3D = means3D,
+            means2D = means2D,
             shs = shs,
             colors_precomp = colors_precomp,
             opacities = opacity,
@@ -320,16 +323,8 @@ class TestGaussianRasterizer(unittest.TestCase):
             rotations = rotations,
             cov3D_precomp = cov3D_precomp
         )
-        print(rendered_image.shape)
-        print(radii.shape)
-        print(depth.shape)
-        print(acc.shape)
-        print(means3D)
-        print(means2D)
-        print(scales)
-        print(rotations)
-        print(radii)
-        print(opacity)
+        #rendered_image.backward()
+        print(means2D.grad)
 
 
 # test run of diff gaussian rasterizer (output depth as well?)
